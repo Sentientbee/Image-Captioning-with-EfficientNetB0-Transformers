@@ -1,0 +1,35 @@
+# Image Captioning with EfficientNetB0 and Transformers
+# Default Configuration
+
+model:
+  image_size: [299, 299]
+  channels: 3
+  seq_length: 25
+  vocab_size: 10000
+  embed_dim: 512
+  ff_dim: 512
+  num_heads_encoder: 2
+  num_heads_decoder: 3
+  dropout_rate_attn: 0.1
+  dropout_rate_dense: 0.3
+  dropout_rate_out: 0.5
+  cnn_trainable: false
+
+training:
+  batch_size: 64
+  epochs: 30
+  warmup_steps_ratio: 0.0667 # 1 / 15
+  learning_rate: 0.0001
+  early_stopping_patience: 3
+  num_captions_per_image: 5
+
+inference:
+  max_decoded_length: 24
+  beam_width: 3
+  length_penalty_alpha: 0.7
+  temperature: 1.0
+
+paths:
+  vocab_path: "data/vocab.json"
+  weights_path: "weights/model_weights.h5"
+  sample_output_dir: "outputs"
