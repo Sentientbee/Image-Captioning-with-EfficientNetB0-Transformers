@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vision Scribe — Multimodal Transformer Image Captioning Studio</title>
+  <meta name="description" content="Interactive Multimodal Deep Learning Web App for Image Captioning using EfficientNetB0 and Multi-Head Cross-Attention Transformers with real-time XAI attention heatmap scrubbing." />
+
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <a href="/" class="brand">
+      <div class="brand-icon">
+        <i class="fa-solid fa-brain"></i>
+      </div>
+      <div class="brand-text">
+        <h1>Vision Scribe</h1>
+        <span>Multimodal AI Studio</span>
+      </div>
+    </a>
+
+    <div class="nav-badges">
+      <div class="badge badge-live" id="serverStatusBadge">
+        <span class="dot-pulse"></span> Connecting to API...
+      </div>
+      <div class="badge" id="weightsStatusBadge">
+        <i class="fa-solid fa-spinner fa-spin"></i> Checking Weights...
+      </div>
+      <a href="https://github.com/Sentientbee/Image-Captioning-with-EfficientNetB0-Transformers" target="_blank" rel="noopener noreferrer" class="badge" style="text-decoration: none; color: inherit;">
+        <i class="fa-brands fa-github"></i> GitHub
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Studio Container -->
+  <main class="main-container">
+    
+    <!-- Hero Banner -->
+    <section class="hero-banner">
+      <div class="hero-pill">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        <span>Transformer Cross-Attention & EfficientNetB0</span>
+      </div>
+      <h2 class="hero-title">
+        Neural Vision <span class="gradient-text">Image Captioning</span> Studio
+      </h2>
+      <p class="hero-subtitle">
+        Generate natural language descriptions for any image and interactively visualize token-by-token cross-attention heatmaps to observe what the neural network attends to.
+      </p>
+    </section>
+
+    <!-- Studio Grid -->
+    <div class="studio-grid">
+      
+      <!-- Left Column: Controls & Input -->
+      <section class="card" aria-label="Input and Controls">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="fa-solid fa-sliders" style="color: var(--color-indigo);"></i>
+            <span>Studio Controls</span>
+          </div>
+          <span class="card-subtitle">Select or upload image</span>
+        </div>
+
+        <!-- Upload Dropzone -->
+        <div class="upload-zone" id="uploadDropzone" tabindex="0" role="button" aria-label="Upload an image">
+          <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" style="display: none;" />
+          <div class="upload-icon">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+          </div>
+          <div class="upload-title">Drop your image here</div>
+          <div class="upload-hint">or click to browse from device (JPG, PNG, WebP)</div>
+        </div>
+
+        <!-- Sample Presets Gallery -->
+        <div class="sample-presets-section">
+          <div class="section-label">
+            <i class="fa-solid fa-images"></i>
+            <span>Or Choose A Preset Sample</span>
+          </div>
+          <div class="presets-grid" id="presetsContainer">
+            <!-- Populated via /api/samples -->
+          </div>
+        </div>
+
+        <!-- Generation Controls -->
+        <div class="controls-section">
+          
+          <!-- Decoding Strategy Toggle -->
+          <div class="control-row">
+            <div class="control-label">
+              <span>Decoding Strategy</span>
+              <small>Beam search explores multiple hypotheses</small>
+            </div>
+            <div class="segmented-control" role="group" aria-label="Decoding Mode">
+              <button type="button" class="seg-btn active" data-mode="beam">Beam Search</button>
+              <button type="button" class="seg-btn" data-mode="greedy">Greedy</button>
+            </div>
+          </div>
+
+          <!-- Beam Width Slider -->
+          <div class="control-row" id="beamWidthGroup">
+            <div class="control-label">
+              <span>Beam Width</span>
+              <small>Number of active search hypotheses (1 - 5)</small>
+            </div>
+            <div class="slider-group">
+              <input type="range" id="beamWidthSlider" min="1" max="5" value="3" step="1" />
+              <span class="slider-val" id="beamWidthVal">3</span>
+            </div>
+          </div>
+
+          <!-- Temperature Slider -->
+          <div class="control-row">
+            <div class="control-label">
+              <span>Temperature</span>
+              <small>Higher = more varied, Lower = confident</small>
+            </div>
+            <div class="slider-group">
+              <input type="range" id="tempSlider" min="0.2" max="1.8" value="1.0" step="0.1" />
+              <span class="slider-val" id="tempVal">1.0</span>
+            </div>
+          </div>
+
+          <!-- Attention Heatmap Colormap -->
+          <div class="control-row">
+            <div class="control-label">
+              <span>Attention Colormap</span>
+              <small>Scientific gradient overlay scheme</small>
+            </div>
+            <select class="colormap-select" id="colormapSelect">
+              <option value="plasma" selected>Plasma (Vibrant Warm)</option>
+              <option value="viridis">Viridis (Uniform Teal/Green)</option>
+              <option value="inferno">Inferno (High Contrast Sunset)</option>
+              <option value="turbo">Turbo (Full Spectrum)</option>
+            </select>
+          </div>
+
+          <!-- Heatmap Overlay Opacity -->
+          <div class="control-row">
+            <div class="control-label">
+              <span>Overlay Opacity</span>
+              <small>Blend attention map with original image</small>
+            </div>
+            <div class="slider-group">
+              <input type="range" id="alphaSlider" min="0.0" max="1.0" value="0.65" step="0.05" />
+              <span class="slider-val" id="alphaVal">65%</span>
+            </div>
+          </div>
+
+          <!-- Action Button -->
+          <button type="button" class="btn-primary" id="btnGenerate">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <span>Generate Caption & Heatmap</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Right Column: Inference Results & XAI Explorer -->
+      <section class="card" aria-label="Inference Results and Attention Heatmap">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="fa-solid fa-eye" style="color: var(--color-pink);"></i>
+            <span>Model Output & Attention Explorer</span>
+          </div>
+          <span class="badge" id="latencyBadge">0 ms</span>
+        </div>
+
+        <!-- Canvas Preview & Heatmap Wrapper -->
+        <div class="preview-canvas-wrapper">
+          <canvas id="attentionCanvas" width="640" height="480"></canvas>
+          <div class="canvas-overlay-tag" id="canvasWordBadge">Original Input</div>
+        </div>
+
+        <!-- Generated Caption Box -->
+        <div class="caption-box">
+          <div class="caption-label">Generated Caption</div>
+          <div class="caption-text" id="captionOutput">
+            Click "Generate Caption & Heatmap" on the left to begin inference.
+          </div>
+          <div class="caption-meta-row">
+            <span><i class="fa-solid fa-layer-group"></i> 8-Head Multi-Head Attention</span>
+            <span><i class="fa-solid fa-microchip"></i> EfficientNetB0 Feature Map</span>
+          </div>
+        </div>
+
+        <!-- Explainable AI (XAI) Word Scrub Explorer -->
+        <div class="xai-section">
+          <div class="xai-header">
+            <div class="xai-title">
+              <i class="fa-solid fa-bolt" style="color: var(--color-amber);"></i>
+              <span>Word-by-Word Attention Focus</span>
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">
+              Click any token or scrub timeline
+            </span>
+          </div>
+
+          <!-- Token Pills List -->
+          <div class="token-pills-container" id="tokenPillsContainer">
+            <span style="color: var(--text-muted); font-size: 0.85rem;">
+              Token pills will appear here once caption is generated.
+            </span>
+          </div>
+
+          <!-- Scrub Player Controls -->
+          <div class="scrub-player">
+            <button type="button" class="btn-play" id="btnPlayScrub" title="Play attention scrub animation">
+              <i class="fa-solid fa-play"></i>
+            </button>
+            <input type="range" class="scrub-slider" id="scrubSlider" min="0" max="0" value="0" step="1" />
+            <span class="slider-val" id="scrubCurrentWord" style="min-width: 90px; text-align: right;">None</span>
+          </div>
+        </div>
+
+        <!-- Candidate Beams (Beam Search Details) -->
+        <div id="beamCandidatesSection" style="display: none; margin-top: 1.25rem;">
+          <div class="section-label">
+            <i class="fa-solid fa-diagram-project"></i>
+            <span>Beam Search Candidates</span>
+          </div>
+          <div class="beam-candidates-list" id="beamCandidatesList">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <p class="footer-text">
+        <strong>Vision Scribe</strong> — Powered by <strong>EfficientNetB0</strong> CNN Encoder & <strong>Transformer</strong> Decoder with Multi-Head Self and Cross-Attention trained on Flickr8k.
+      </p>
+      <div class="footer-links">
+        <a href="https://github.com/Sentientbee/Image-Captioning-with-EfficientNetB0-Transformers" target="_blank" rel="noopener noreferrer" class="footer-link">
+          <i class="fa-brands fa-github"></i> Repository
+        </a>
+        <a href="/docs" target="_blank" class="footer-link">
+          <i class="fa-solid fa-book"></i> Interactive API Docs
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="/static/js/heatmap.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -136,6 +136,24 @@ Image-Captioning-with-EfficientNetB0-Transformers/
 └── README.md                       # Documentation
 ```
 
+## Interactive Web App Studio
+
+A showcase web application built with **FastAPI** and modern **Vanilla HTML5/CSS/JS** in a vibrant light-mode aesthetic.
+
+### Features
+- **Word-by-Word Explainable AI (XAI)**: Click on any generated token or drag the interactive scrubber timeline to reveal real-time cross-attention heatmaps smoothly blended over the input image using scientific colormaps (*Plasma*, *Viridis*, *Inferno*, *Turbo*).
+- **Beam Search vs Greedy Explorer**: Toggle between decoding strategies, adjust beam width ($k=1..5$) and sampling temperature, and inspect ranked candidate beam hypotheses with log-probabilities.
+- **Instant Demo Presets & Drag-and-Drop Upload**: Test instantly with preloaded Flickr8k photography presets or drag-and-drop your own photos.
+- **RESTful API & Swagger Docs**: Fully typed FastAPI backend with interactive Swagger documentation at `http://localhost:8000/docs`.
+
+### Launching the Web App
+
+```bash
+# Start the FastAPI server
+python -m uvicorn app.server:app --reload --port 8000
+```
+Then open your browser at **[http://localhost:8000](http://localhost:8000)**.
+
 ---
 
 ## Quickstart
