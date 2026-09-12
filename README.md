@@ -1,24 +1,22 @@
-# Vision Scribe: Image Captioning with EfficientNetB0 & Transformers
+# Vision Scribe
 
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/)
 [![TensorFlow 2.12+](https://img.shields.io/badge/TensorFlow-2.12%2B-orange.svg)](https://tensorflow.org/)
 [![Architecture](https://img.shields.io/badge/Architecture-CNN%20%2B%20Transformer-purple.svg)](#architecture)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-An end-to-end Vision-Language deep learning system that generates descriptive, natural language captions from images. Built with an **EfficientNetB0 visual feature encoder** and an autoregressive **Transformer decoder** with multi-head self-attention and cross-attention.
-
-Featuring **Beam Search decoding**, **Cross-Attention Heatmap Visualization** (interpreting word-by-word visual focus), and a **standardized benchmark evaluation suite** (BLEU-1..4, ROUGE-L, METEOR).
+Offline image caption generator (English only).
 
 ---
 
 ## Key Highlights
 
-- **Hybrid CNN–Transformer Architecture**: Extracts rich spatial feature maps ($10 \times 10 \times 1280$) using ImageNet pretrained EfficientNetB0, mapped into a multi-head cross-attention Transformer decoder.
-- **Explainable AI (XAI) Attention Heatmaps**: Extracts spatial cross-attention weights for each generated word token and projects high-resolution heatmaps onto the original image.
+- **Hybrid CNN–Transformer Architecture**: Spatial feature of size ($10 \times 10 \times 1280$) extracted using ImageNet pretrained EfficientNetB0 and mapped into a multi-head cross-attention Transformer decoder.
+- **Attention Heatmaps**: Extracts spatial cross-attention weights for each generated word token and projects high-resolution heatmaps onto the original image.
 - **Top-$k$ Beam Search Decoding**: Implements Beam Search with temperature scaling and length penalty normalization ($\alpha = 0.7$) alongside greedy search.
 - **Zero-Pickle Serialization**: Uses version-controlled JSON vocabulary schemas and native TensorFlow TextVectorization, eliminating cross-version pickle deserialization issues.
 - **Vectorized Multi-Caption Training**: Parallelized forward/backward passes across all 5 reference captions per image, enabling exact gradient updates and up to $4\times$ faster training steps.
-- **Rigorous NLP Evaluation**: Word-tokenized BLEU-1 to BLEU-4, ROUGE-L, and METEOR evaluated on standard Flickr8k splits.
+- **NLP Evaluation**: Word-tokenized BLEU-1 to BLEU-4, ROUGE-L, and METEOR evaluated on standard Flickr8k splits.
 
 ---
 
@@ -43,7 +41,7 @@ flowchart TD
         L --> M[Dense Vocab Projection: 10000]
     end
 
-    subgraph Inference & XAI
+    subgraph Inference
         M --> N{Decoding Strategy}
         N -->|Greedy Search| O[Argmax Prediction]
         N -->|Beam Search| P[Top-k Ranked Hypotheses]
@@ -70,24 +68,21 @@ When generating each word, the Transformer decoder computes a cross-attention sc
 
 ---
 
-## Training Performance & Convergence
+## Training Performance
 
 Trained on Flickr8k across 25 epochs using Adam with linear warmup learning rate schedule and vectorized multi-caption loss:
 
-| Metric | Value | Details |
+| Metric | Value | Explanation |
 | :--- | :---: | :--- |
 | **Final Training Loss** | **2.2708** | Dropped from initial 8.63 |
 | **Final Training Accuracy** | **48.54%** | Token-level prediction accuracy |
 | **Validation Loss** | **2.9314** | Evaluated on 1,011 unseen Karpathy split images |
-| **Validation Accuracy** | **41.79%** | Robust generalization without severe overfitting |
-| **Step Latency** | **~437 ms** | Per batch (64 images $\times$ 5 captions = 320 captions/step) |
+| **Validation Accuracy** | **41.79%** |  |
 | **Epoch Time** | **~83 sec** | On a single NVIDIA Tesla T4 GPU |
 
 ---
 
 ## Benchmark Results (Flickr8k Karpathy Split)
-
-Evaluated on the standard test split using word-tokenized NLTK corpus metrics:
 
 | Metric | Greedy Search | Beam Search ($k=3$) | Beam Search ($k=5$) |
 | :--- | :---: | :---: | :---: |
@@ -98,61 +93,14 @@ Evaluated on the standard test split using word-tokenized NLTK corpus metrics:
 | **ROUGE-L** | 41.8% | 45.3% | **45.9%** |
 | **METEOR** | 20.9% | 22.6% | **23.1%** |
 
+
 ---
-
-## Project Structure
-
-```
-Image-Captioning-with-EfficientNetB0-Transformers/
-├── configs/
-│   └── default_config.yaml         # Centralized hyperparameters & paths
-├── data/
-│   └── vocab.json                  # Clean JSON vocabulary mapping (10k tokens)
-├── src/
-│   ├── config.py                   # Dataclass configuration loader
-│   ├── data/
-│   │   ├── dataset.py              # tf.data pipeline with augmentations & Karpathy split
-│   │   └── tokenizer.py            # Clean text standardizer & vectorizer
-│   ├── models/
-│   │   ├── encoder.py              # EfficientNetB0 backbone & self-attention encoder
-│   │   ├── decoder.py              # Transformer decoder with fixed attention masks
-│   │   ├── positional_embedding.py # Learnable positional embeddings
-│   │   └── captioner.py            # End-to-end model with vectorized multi-caption loss
-│   ├── inference/
-│   │   ├── greedy.py               # Greedy search generator CLI
-│   │   ├── beam_search.py          # Top-k Beam Search decoder CLI
-│   │   └── attention_map.py        # Cross-attention heatmap generator CLI
-│   ├── metrics/
-│   │   └── evaluate.py             # Word-tokenized BLEU-1..4, ROUGE-L, METEOR benchmark
-│   └── train.py                    # Production training entrypoint with warmup LR schedule
-├── tests/
-│   ├── test_tokenizer.py           # Unit tests for vocabulary and text processing
-│   ├── test_model_shapes.py        # Tensor shape verification across all layers
-│   └── test_metrics.py             # Validation of word-level evaluation metrics
-├── notebooks/
-│   └── exploration.ipynb           # Original experimental notebook for historical reference
-├── pyproject.toml                  # Modern Python package specification
-├── requirements.txt                # Pinned dependencies
-└── README.md                       # Documentation
-```
-
-## Interactive Web App Studio
-
-A showcase web application built with **FastAPI** and modern **Vanilla HTML5/CSS/JS** in a vibrant light-mode aesthetic.
-
-### Features
-- **Word-by-Word Explainable AI (XAI)**: Click on any generated token or drag the interactive scrubber timeline to reveal real-time cross-attention heatmaps smoothly blended over the input image using scientific colormaps (*Plasma*, *Viridis*, *Inferno*, *Turbo*).
-- **Beam Search vs Greedy Explorer**: Toggle between decoding strategies, adjust beam width ($k=1..5$) and sampling temperature, and inspect ranked candidate beam hypotheses with log-probabilities.
-- **Instant Demo Presets & Drag-and-Drop Upload**: Test instantly with preloaded Flickr8k photography presets or drag-and-drop your own photos.
-- **RESTful API & Swagger Docs**: Fully typed FastAPI backend with interactive Swagger documentation at `http://localhost:8000/docs`.
-
 ### Launching the Web App
 
 ```bash
-# Start the FastAPI server
 python -m uvicorn app.server:app --reload --port 8000
 ```
-Then open your browser at **[http://localhost:8000](http://localhost:8000)**.
+Accessible at: **[http://localhost:8000](http://localhost:8000)**.
 
 ---
 
@@ -161,15 +109,12 @@ Then open your browser at **[http://localhost:8000](http://localhost:8000)**.
 ### 1. Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/Sentientbee/Image-Captioning-with-EfficientNetB0-Transformers.git
 cd Image-Captioning-with-EfficientNetB0-Transformers
 
-# Create virtual environment
 python -m venv .venv
-source .venv/bin/activate   # On Windows: .venv\Scripts\activate
+source .venv/bin/activate   
 
-# Install dependencies
 pip install -r requirements.txt
 pip install -e .
 ```
@@ -221,21 +166,8 @@ pytest tests/ -v
 
 ---
 
-## Engineering Fixes & Rigor
-
-| Component | Legacy State | Modernized Solution |
-| :--- | :--- | :--- |
-| **Evaluation Metrics** | Character-level BLEU bug (strings passed to NLTK) | Word-tokenized BLEU-1..4 with smoothing, ROUGE-L, and METEOR |
-| **Attention Masking** | Caption mask passed to image cross-attention keys | Cross-attention key mask set to `None`; causal self-attention properly combined |
-| **Multi-Caption Training** | 5 sequential gradient updates per image batch | Parallel vectorized loss across `(batch * 5)` with single gradient update |
-| **Serialization** | Fragile `.pkl` layer configurations | Version-controlled `vocab.json` with native `TextVectorization` |
-| **Reproducibility** | Unseeded `np.random.shuffle` before `train_test_split` | Deterministic Karpathy split with fixed random seed |
-| **Architecture** | Monolithic 2,900-line notebook with 4 duplicate Tkinter GUIs | Modular Python package (`src/`), CLI entrypoints, and full test suite |
-
----
-
 ## Author
 
 **Mayank Gour**  
 - GitHub: [@Sentientbee](https://github.com/Sentientbee)
-- Project: Image Captioning with EfficientNetB0 & Transformers
+- Project: Vision Scribe - Image Captioning with EfficientNetB0 & Transformers
