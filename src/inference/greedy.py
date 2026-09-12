@@ -33,6 +33,9 @@ class GreedyGenerator:
         else:
             img_tensor = image_input
 
+        if tf.reduce_max(img_tensor) <= 1.0:
+            img_tensor = img_tensor * 255.0
+
         if len(img_tensor.shape) == 3:
             img_tensor = tf.expand_dims(img_tensor, 0)
 

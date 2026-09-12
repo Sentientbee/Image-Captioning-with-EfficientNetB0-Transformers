@@ -39,9 +39,14 @@ async def lifespan(app: FastAPI):
     cfg = load_config()
     app_state["cfg"] = cfg
 
-    print(f"[Server] Loading vocabulary from {cfg.paths.vocab_path}...")
+    repo_root = Path(__file__).resolve().parent.parent
+    vocab_path = Path(cfg.paths.vocab_path)
+    if not vocab_path.exists():
+        vocab_path = repo_root / cfg.paths.vocab_path
+
+    print(f"[Server] Loading vocabulary from {vocab_path}...")
     tokenizer = CaptionTokenizer.from_vocab_file(
-        cfg.paths.vocab_path,
+        vocab_path,
         max_tokens=cfg.model.vocab_size,
         seq_length=cfg.model.seq_length,
     )
@@ -177,7 +182,7 @@ async def generate_caption(
 
     # 1. Acquire Image Bytes
     image_bytes = None
-    if file and file.filename:
+    if file is not None and getattr(file, "filename", None):
         image_bytes = await file.read()
     elif sample_id:
         sample_path = static_dir / "samples" / f"{sample_id}.jpg"
@@ -203,15 +208,26 @@ async def generate_caption(
     # 2. Resize and Preprocess for TensorFlow
     cfg: AppConfig = app_state["cfg"]
     img_resized = pil_img.resize(cfg.model.image_size, Image.Resampling.BILINEAR)
-    img_arr = np.array(img_resized, dtype=np.float32) / 255.0
+    # EfficientNetB0 has internal Rescaling(1/255) and expects raw pixel intensities in [0.0, 255.0]
+    img_arr = np.array(img_resized, dtype=np.float32)
     img_tensor = tf.convert_to_tensor(img_arr, dtype=tf.float32)
 
     # 3. Caption Generation (Greedy or Beam Search)
+    try:
+        temp_val = float(temperature)
+    except (TypeError, ValueError):
+        temp_val = 1.0
+
+    try:
+        bw_val = int(beam_width)
+    except (TypeError, ValueError):
+        bw_val = 3
+
     beam_candidates = []
     if decoding_mode == "beam":
         beam_gen: BeamSearchGenerator = app_state["beam_gen"]
-        beam_gen.temperature = max(0.1, min(temperature, 2.0))
-        caption, raw_candidates = beam_gen.generate(img_tensor, beam_width=max(1, min(beam_width, 5)))
+        beam_gen.temperature = max(0.1, min(temp_val, 2.0))
+        caption, raw_candidates = beam_gen.generate(img_tensor, beam_width=max(1, min(bw_val, 5)))
         beam_candidates = [{"caption": c[0], "score": round(float(c[1]), 3)} for c in raw_candidates]
     else:
         greedy_gen: GreedyGenerator = app_state["greedy_gen"]

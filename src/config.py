@@ -49,18 +49,22 @@ def resolve_weights_path(weights_path: Optional[Union[str, Path]]) -> Optional[P
     """Finds existing weights file supporting both .weights.h5 and legacy .h5 formats."""
     if not weights_path:
         return None
-    p = Path(weights_path)
-    if p.exists():
-        return p
+    repo_root = Path(__file__).resolve().parent.parent
+    candidates = [
+        Path(weights_path),
+        repo_root / weights_path,
+    ]
     path_str = str(weights_path)
     if path_str.endswith(".h5") and not path_str.endswith(".weights.h5"):
-        alt_p = Path(path_str[:-3] + ".weights.h5")
-        if alt_p.exists():
-            return alt_p
-    if path_str.endswith(".weights.h5"):
-        alt_p = Path(path_str[:-11] + ".h5")
-        if alt_p.exists():
-            return alt_p
+        alt_str = path_str[:-3] + ".weights.h5"
+        candidates.extend([Path(alt_str), repo_root / alt_str])
+    elif path_str.endswith(".weights.h5"):
+        alt_str = path_str[:-11] + ".h5"
+        candidates.extend([Path(alt_str), repo_root / alt_str])
+
+    for p in candidates:
+        if p.exists():
+            return p
     return None
 
 
