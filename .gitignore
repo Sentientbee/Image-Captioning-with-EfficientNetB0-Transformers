@@ -55,3 +55,12 @@ logs/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Datasets (keep raw image files and large datasets out of git)
+data/Images/
+data/captions.txt
+data/*Dataset*/
+data/Flick*
+*.jpg
+*.jpeg
+*.png

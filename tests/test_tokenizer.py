@@ -41,3 +41,10 @@ def test_caption_formatting():
     formatted = tokenizer.format_caption(raw)
     assert formatted == "<start> two children playing <end>"
     assert tokenizer.clean_caption(formatted) == "two children playing"
+
+
+def test_tokenizer_tensor_input():
+    tokenizer = CaptionTokenizer.from_vocab_file("data/vocab.json")
+    caption_tensor = tf.constant(["<start> a dog is running <end>", "<start> two boys playing <end>"])
+    seq = tokenizer.text_to_sequence(caption_tensor)
+    assert seq.shape == (2, 25)

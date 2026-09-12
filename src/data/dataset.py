@@ -30,6 +30,7 @@ def decode_and_resize(
     img = tf.image.decode_image(img_bytes, channels=3, expand_animations=False)
     img = tf.image.resize(img, image_size)
     img = tf.image.convert_image_dtype(img, tf.float32)
+    img.set_shape((*image_size, 3))
     return img
 
 
@@ -162,7 +163,9 @@ class CaptionDatasetLoader:
             img = decode_and_resize(img_path, self.image_size)
             if is_training:
                 img = self.augmentation(tf.expand_dims(img, 0), training=True)[0]
+                img.set_shape((*self.image_size, 3))
             vectorized_caps = self.tokenizer.text_to_sequence(caps)
+            vectorized_caps.set_shape((num_captions_per_image, self.seq_length))
             return img, vectorized_caps
 
         dataset = tf.data.Dataset.from_tensor_slices((image_paths, caption_lists))

@@ -98,13 +98,15 @@ class CaptionTokenizer:
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(self.vocab, f, indent=2)
 
-    def text_to_sequence(self, text: Union[str, List[str]]) -> tf.Tensor:
-        """Converts text string or batch of strings to integer sequence tensor."""
+    def text_to_sequence(self, text: Union[str, List[str], tf.Tensor]) -> tf.Tensor:
+        """Converts text string, list of strings, or string Tensor to integer sequence tensor."""
         if self.vectorizer is None:
             raise ValueError("Tokenizer has not been fitted or loaded with a vocabulary.")
+        if tf.is_tensor(text):
+            return self.vectorizer(text)
         if isinstance(text, str):
             text = [text]
-        return self.vectorizer(tf.constant(text))
+        return self.vectorizer(tf.convert_to_tensor(text))
 
     def sequence_to_text(self, sequence: Union[List[int], tf.Tensor]) -> str:
         """Converts an integer token sequence back into a clean readable string."""

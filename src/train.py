@@ -76,10 +76,10 @@ def train(
 
         train_ds = loader.create_dataset(train_map, batch_size=cfg.training.batch_size, is_training=True)
         val_ds = loader.create_dataset(val_map, batch_size=cfg.training.batch_size, is_training=False)
-        total_steps = len(train_map) // cfg.training.batch_size * cfg.training.epochs
+        total_steps = max(1, len(train_map) // cfg.training.batch_size) * cfg.training.epochs
     except Exception as e:
-        print(f"Warning: Could not load local dataset ({e}). Running in dry-run structure validation mode.")
-        return
+        print(f"Error loading dataset: {e}")
+        raise e
 
     print("Building model architecture...")
     model = build_caption_model(
