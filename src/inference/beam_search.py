@@ -48,6 +48,7 @@ class BeamSearchGenerator:
         self,
         image_input: Union[str, Path, np.ndarray, tf.Tensor],
         beam_width: Optional[int] = None,
+        temperature: Optional[float] = None,
     ) -> Tuple[str, List[Tuple[str, float]]]:
         """Runs Beam Search on input image.
 
@@ -55,13 +56,20 @@ class BeamSearchGenerator:
             Tuple of (best_caption: str, all_candidates: List[(caption, score)])
         """
         k = beam_width or self.beam_width
+        current_temp = max(1e-5, temperature if temperature is not None else self.temperature)
 
         if isinstance(image_input, (str, Path)):
             img_tensor = decode_and_resize(str(image_input), self.model.cnn_model.input_shape[1:3])
         elif isinstance(image_input, np.ndarray):
-            img_tensor = tf.convert_to_tensor(image_input, dtype=tf.float32)
+            arr = image_input.copy()
+            if arr.ndim == 4 and arr.shape[0] == 1:
+                arr = arr[0]
+            img_tensor = tf.convert_to_tensor(arr, dtype=tf.float32)
         else:
-            img_tensor = image_input
+            arr = image_input
+            if len(arr.shape) == 4 and arr.shape[0] == 1:
+                arr = arr[0]
+            img_tensor = arr
 
         if tf.reduce_max(img_tensor) <= 1.0:
             img_tensor = img_tensor * 255.0
@@ -95,8 +103,8 @@ class BeamSearchGenerator:
                 probs = predictions[0, step, :].numpy()
 
                 # Apply temperature
-                if self.temperature != 1.0:
-                    probs = np.log(np.maximum(probs, 1e-12)) / self.temperature
+                if current_temp != 1.0:
+                    probs = np.log(np.maximum(probs, 1e-12)) / current_temp
                     probs = np.exp(probs - np.max(probs))
                     probs = probs / np.sum(probs)
 

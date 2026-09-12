@@ -167,9 +167,17 @@ def evaluate_dataset(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Evaluate Image Captioning Model on benchmark split")
-    parser.add_argument("--images_dir", type=str, default="data/Images", help="Path to images directory")
-    parser.add_argument("--captions_file", type=str, default="data/captions.txt", help="Path to captions file")
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    default_img = "data/Images"
+    if not Path(default_img).exists() and (repo_root / "data" / "Flick8k Dataset" / "Images").exists():
+        default_img = str(repo_root / "data" / "Flick8k Dataset" / "Images")
+
+    default_cap = "data/captions.txt"
+    if not Path(default_cap).exists() and (repo_root / "data" / "Flick8k Dataset" / "captions.txt").exists():
+        default_cap = str(repo_root / "data" / "Flick8k Dataset" / "captions.txt")
+
+    parser.add_argument("--images_dir", type=str, default=default_img, help="Path to images directory")
+    parser.add_argument("--captions_file", type=str, default=default_cap, help="Path to captions file")
     parser.add_argument("--weights", type=str, default=None, help="Path to model weights file (.h5)")
     parser.add_argument("--use_beam_search", action="store_true", help="Evaluate using Beam Search")
     parser.add_argument("--beam_width", type=int, default=3, help="Beam width if beam search is used")

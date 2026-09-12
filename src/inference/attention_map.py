@@ -37,17 +37,26 @@ class AttentionVisualizer:
                 - attention_maps: List[np.ndarray] of 2D normalized heatmaps (H, W)
                 - original_pil_img: PIL Image of the input image
         """
+    def _prepare_inputs(
+        self,
+        image_input: Union[str, Path, np.ndarray, tf.Tensor],
+    ) -> Tuple[Image.Image, tf.Tensor]:
+        """Validates, converts, and batches input image for inference."""
         if isinstance(image_input, (str, Path)):
             pil_img = Image.open(str(image_input)).convert("RGB")
             img_tensor = decode_and_resize(str(image_input), self.model.cnn_model.input_shape[1:3])
         elif isinstance(image_input, np.ndarray):
             arr = image_input.copy()
+            if arr.ndim == 4 and arr.shape[0] == 1:
+                arr = arr[0]
             if arr.max() <= 1.0:
                 arr = arr * 255.0
             pil_img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
             img_tensor = tf.convert_to_tensor(image_input, dtype=tf.float32)
         else:
             arr = image_input.numpy()
+            if arr.ndim == 4 and arr.shape[0] == 1:
+                arr = arr[0]
             if arr.max() <= 1.0:
                 arr = arr * 255.0
             pil_img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
@@ -58,6 +67,83 @@ class AttentionVisualizer:
 
         if len(img_tensor.shape) == 3:
             img_tensor = tf.expand_dims(img_tensor, 0)
+
+        return pil_img, img_tensor
+
+    def extract_attention_for_words(
+        self,
+        image_input: Union[str, Path, np.ndarray, tf.Tensor],
+        words: List[str],
+    ) -> Tuple[List[str], List[np.ndarray], Image.Image]:
+        """Extracts cross-attention spatial heatmaps for a pre-generated sequence of words.
+
+        Enables perfect synchronization between Beam Search output and heatmap visualizations.
+        """
+        pil_img, img_tensor = self._prepare_inputs(image_input)
+
+        if not words:
+            return [], [], pil_img
+
+        clean_words = [w for w in words if w and w not in [self.tokenizer.START_TOKEN, self.tokenizer.END_TOKEN]]
+        clean_words = clean_words[: self.max_length]
+
+        if not clean_words:
+            return [], [], pil_img
+
+        # 1. Visual Feature Extraction
+        img_features = self.model.cnn_model(img_tensor, training=False)
+        encoded_img = self.model.encoder(img_features, training=False)
+
+        num_patches = int(encoded_img.shape[1])
+        grid_dim = int(np.sqrt(num_patches))
+
+        # 2. Sequence prefix including start token
+        input_tokens = [self.tokenizer.START_TOKEN] + clean_words
+        caption_str = " ".join(input_tokens)
+        token_ids = self.tokenizer.text_to_sequence([caption_str])[:, :-1]
+        mask = tf.math.not_equal(token_ids, 0)
+
+        # 3. Single-pass decoder execution with attention scores
+        _, cross_attn = self.model.decoder(
+            token_ids,
+            encoded_img,
+            training=False,
+            mask=mask,
+            return_attention_scores=True,
+        )
+
+        attention_maps: List[np.ndarray] = []
+        for i in range(len(clean_words)):
+            if cross_attn is not None and i < cross_attn.shape[2]:
+                attn_heads = cross_attn[0, :, i, :].numpy()
+                attn_vec = np.mean(attn_heads, axis=0)
+            else:
+                attn_vec = np.ones((num_patches,), dtype=np.float32) / num_patches
+
+            if len(attn_vec) == grid_dim * grid_dim:
+                attn_grid = attn_vec.reshape((grid_dim, grid_dim))
+            else:
+                attn_grid = np.zeros((grid_dim, grid_dim), dtype=np.float32)
+
+            min_val, max_val = np.min(attn_grid), np.max(attn_grid)
+            norm_attn = (attn_grid - min_val) / (max_val - min_val + 1e-8)
+            attention_maps.append(norm_attn)
+
+        return clean_words, attention_maps, pil_img
+
+    def generate_with_attention(
+        self,
+        image_input: Union[str, Path, np.ndarray, tf.Tensor],
+    ) -> Tuple[List[str], List[np.ndarray], Image.Image]:
+        """Generates a caption while recording the cross-attention spatial heatmap for each token.
+
+        Returns:
+            Tuple of:
+                - words: List[str] of generated words
+                - attention_maps: List[np.ndarray] of 2D normalized heatmaps (H, W)
+                - original_pil_img: PIL Image of the input image
+        """
+        pil_img, img_tensor = self._prepare_inputs(image_input)
 
         # 1. Visual Feature Extraction
         img_features = self.model.cnn_model(img_tensor, training=False)
@@ -92,12 +178,10 @@ class AttentionVisualizer:
                 break
 
             # Average cross-attention weights across attention heads for current token step
-            # attn_weights shape: (num_heads, num_patches) -> mean over heads -> (num_patches,)
             if cross_attn is not None:
                 attn_heads = cross_attn[0, :, step, :].numpy()
                 attn_vec = np.mean(attn_heads, axis=0)
             else:
-                # Fallback uniform attention if attention scores not returned
                 attn_vec = np.ones((num_patches,), dtype=np.float32) / num_patches
 
             # Reshape into 2D spatial grid (grid_dim x grid_dim)
@@ -156,6 +240,8 @@ class AttentionVisualizer:
         # Resize PIL image for overlay dimensions
         img_w, img_h = pil_img.size
 
+        resample_filter = getattr(getattr(Image, "Resampling", Image), "BICUBIC", Image.BICUBIC)
+
         # Subplots 2..N: Word-by-word cross-attention overlay
         for i, (word, attn_map) in enumerate(zip(words, attns), start=2):
             ax = fig.add_subplot(rows, cols, i)
@@ -163,7 +249,7 @@ class AttentionVisualizer:
 
             # Resize low-res attention grid to original image resolution with bicubic interpolation
             attn_img = Image.fromarray((attn_map * 255).astype(np.uint8))
-            resized_attn = np.array(attn_img.resize((img_w, img_h), resample=Image.BICUBIC)) / 255.0
+            resized_attn = np.array(attn_img.resize((img_w, img_h), resample=resample_filter)) / 255.0
 
             ax.imshow(resized_attn, cmap=colormap, alpha=alpha)
             ax.set_title(f'"{word}"', fontsize=12, fontweight="bold", color="#1a237e", pad=8)

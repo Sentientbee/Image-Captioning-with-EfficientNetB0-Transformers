@@ -29,9 +29,15 @@ class GreedyGenerator:
         if isinstance(image_input, (str, Path)):
             img_tensor = decode_and_resize(str(image_input), self.model.cnn_model.input_shape[1:3])
         elif isinstance(image_input, np.ndarray):
-            img_tensor = tf.convert_to_tensor(image_input, dtype=tf.float32)
+            arr = image_input.copy()
+            if arr.ndim == 4 and arr.shape[0] == 1:
+                arr = arr[0]
+            img_tensor = tf.convert_to_tensor(arr, dtype=tf.float32)
         else:
-            img_tensor = image_input
+            arr = image_input
+            if len(arr.shape) == 4 and arr.shape[0] == 1:
+                arr = arr[0]
+            img_tensor = arr
 
         if tf.reduce_max(img_tensor) <= 1.0:
             img_tensor = img_tensor * 255.0
