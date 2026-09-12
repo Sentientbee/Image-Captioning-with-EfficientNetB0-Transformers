@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 import tensorflow as tf
 
-from src.config import AppConfig, load_config
+from src.config import AppConfig, load_config, resolve_weights_path
 from src.data.dataset import decode_and_resize
 from src.data.tokenizer import CaptionTokenizer
 from src.inference.greedy import GreedyGenerator
@@ -160,9 +160,9 @@ def main():
         ff_dim=cfg.model.ff_dim,
     )
 
-    weights_path = args.weights or cfg.paths.weights_path
-    if weights_path and Path(weights_path).exists():
-        model.load_weights(weights_path)
+    weights_path = resolve_weights_path(args.weights or cfg.paths.weights_path)
+    if weights_path and weights_path.exists():
+        model.load_weights(str(weights_path))
         print(f"Loaded weights from {weights_path}.")
     else:
         print("Note: Running with initialized weights (demo/dry-run mode).")

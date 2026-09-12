@@ -5,7 +5,7 @@ import numpy as np
 from nltk.translate.bleu_score import SmoothingFunction, corpus_bleu
 from tqdm import tqdm
 
-from src.config import load_config
+from src.config import load_config, resolve_weights_path
 from src.data.dataset import CaptionDatasetLoader
 from src.data.tokenizer import CaptionTokenizer
 from src.inference.beam_search import BeamSearchGenerator
@@ -192,9 +192,9 @@ def main():
         ff_dim=cfg.model.ff_dim,
     )
 
-    weights_path = args.weights or cfg.paths.weights_path
-    if weights_path and Path(weights_path).exists():
-        model.load_weights(weights_path)
+    weights_path = resolve_weights_path(args.weights or cfg.paths.weights_path)
+    if weights_path and weights_path.exists():
+        model.load_weights(str(weights_path))
         print(f"Loaded weights from {weights_path}.")
     else:
         print("Note: Running with initialized weights (demo/dry-run mode).")

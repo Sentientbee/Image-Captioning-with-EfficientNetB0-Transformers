@@ -31,5 +31,5 @@ inference:
 
 paths:
   vocab_path: "data/vocab.json"
-  weights_path: "weights/model_weights.h5"
+  weights_path: "weights/model_weights.weights.h5"
   sample_output_dir: "outputs"

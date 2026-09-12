@@ -42,10 +42,17 @@ def train(
     captions_file: str = None,
     epochs: int = None,
     batch_size: int = None,
-    output_weights: str = "weights/model_weights.h5",
+    output_weights: str = "weights/model_weights.weights.h5",
 ):
     """Main training workflow."""
     cfg = load_config(config_path)
+
+    # Enforce Keras 3 format requirement for save_weights_only
+    if not output_weights.endswith(".weights.h5"):
+        if output_weights.endswith(".h5"):
+            output_weights = output_weights[:-3] + ".weights.h5"
+        else:
+            output_weights = output_weights + ".weights.h5"
 
     if epochs:
         cfg.training.epochs = epochs
@@ -141,7 +148,7 @@ def main():
     parser.add_argument("--captions_file", type=str, default=None, help="Path to captions file")
     parser.add_argument("--epochs", type=int, default=None, help="Number of epochs")
     parser.add_argument("--batch_size", type=int, default=None, help="Batch size")
-    parser.add_argument("--output_weights", type=str, default="weights/model_weights.h5", help="Path to save weights")
+    parser.add_argument("--output_weights", type=str, default="weights/model_weights.weights.h5", help="Path to save weights")
     args = parser.parse_args()
 
     train(

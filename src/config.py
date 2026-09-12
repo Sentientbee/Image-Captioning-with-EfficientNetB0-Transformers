@@ -41,8 +41,27 @@ class InferenceConfig:
 @dataclass
 class PathsConfig:
     vocab_path: str = "data/vocab.json"
-    weights_path: str = "weights/model_weights.h5"
+    weights_path: str = "weights/model_weights.weights.h5"
     sample_output_dir: str = "outputs"
+
+
+def resolve_weights_path(weights_path: Optional[Union[str, Path]]) -> Optional[Path]:
+    """Finds existing weights file supporting both .weights.h5 and legacy .h5 formats."""
+    if not weights_path:
+        return None
+    p = Path(weights_path)
+    if p.exists():
+        return p
+    path_str = str(weights_path)
+    if path_str.endswith(".h5") and not path_str.endswith(".weights.h5"):
+        alt_p = Path(path_str[:-3] + ".weights.h5")
+        if alt_p.exists():
+            return alt_p
+    if path_str.endswith(".weights.h5"):
+        alt_p = Path(path_str[:-11] + ".h5")
+        if alt_p.exists():
+            return alt_p
+    return None
 
 
 @dataclass
