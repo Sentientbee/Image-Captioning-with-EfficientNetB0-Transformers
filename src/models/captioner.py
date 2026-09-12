@@ -105,11 +105,12 @@ class ImageCaptioningModel(keras.Model):
         flat_inp = flat_seq[:, :-1]
         flat_true = flat_seq[:, 1:]
 
-        mask = tf.math.not_equal(flat_true, 0)
-        flat_pred = self.decoder(flat_inp, encoded_img_repeated, training=training, mask=mask)
+        inp_mask = tf.math.not_equal(flat_inp, 0)
+        target_mask = tf.math.not_equal(flat_true, 0)
+        flat_pred = self.decoder(flat_inp, encoded_img_repeated, training=training, mask=inp_mask)
 
-        loss = self.calculate_loss(flat_true, flat_pred, mask)
-        acc = self.calculate_accuracy(flat_true, flat_pred, mask)
+        loss = self.calculate_loss(flat_true, flat_pred, target_mask)
+        acc = self.calculate_accuracy(flat_true, flat_pred, target_mask)
         return loss, acc
 
     def train_step(self, batch_data: Tuple[tf.Tensor, tf.Tensor]) -> Dict[str, tf.Tensor]:

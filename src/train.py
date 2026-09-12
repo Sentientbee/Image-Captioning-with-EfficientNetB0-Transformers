@@ -66,8 +66,18 @@ def train(
         seq_length=cfg.model.seq_length,
     )
 
-    img_path = images_dir or "data/Images"
-    cap_path = captions_file or "data/captions.txt"
+    # Autodetect dataset paths if defaults don't exist
+    repo_root = Path(__file__).resolve().parent.parent
+    default_img = "data/Images"
+    if not Path(default_img).exists() and (repo_root / "data" / "Flick8k Dataset" / "Images").exists():
+        default_img = str(repo_root / "data" / "Flick8k Dataset" / "Images")
+
+    default_cap = "data/captions.txt"
+    if not Path(default_cap).exists() and (repo_root / "data" / "Flick8k Dataset" / "captions.txt").exists():
+        default_cap = str(repo_root / "data" / "Flick8k Dataset" / "captions.txt")
+
+    img_path = images_dir or default_img
+    cap_path = captions_file or default_cap
 
     print(f"Initializing dataset loader from:\n  Images: {img_path}\n  Captions: {cap_path}")
     loader = CaptionDatasetLoader(
@@ -136,8 +146,7 @@ def train(
         callbacks=callbacks,
     )
 
-    model.save_weights(output_weights)
-    print(f"Training complete. Weights saved to {output_weights}")
+    print(f"Training complete. Best checkpoint preserved at {output_weights}")
     return history
 
 

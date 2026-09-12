@@ -48,6 +48,32 @@ class CaptionDatasetLoader:
     ):
         self.images_dir = Path(images_dir)
         self.captions_path = Path(captions_path)
+
+        # Autodetect fallback paths relative to repository root if missing
+        if not self.images_dir.exists() or not self.captions_path.exists():
+            repo_root = Path(__file__).resolve().parent.parent.parent
+            if not self.images_dir.exists():
+                alt_images = [
+                    repo_root / images_dir,
+                    repo_root / "data" / "Flick8k Dataset" / "Images",
+                    repo_root / "data" / "Images",
+                ]
+                for p in alt_images:
+                    if p.exists():
+                        self.images_dir = p
+                        break
+
+            if not self.captions_path.exists():
+                alt_captions = [
+                    repo_root / captions_path,
+                    repo_root / "data" / "Flick8k Dataset" / "captions.txt",
+                    repo_root / "data" / "captions.txt",
+                ]
+                for p in alt_captions:
+                    if p.exists():
+                        self.captions_path = p
+                        break
+
         self.tokenizer = tokenizer
         self.image_size = image_size
         self.seq_length = seq_length
@@ -60,48 +86,66 @@ class CaptionDatasetLoader:
         Returns:
             Tuple of (mapping: {image_path: [5 captions]}, all_captions: [str])
         """
+        import csv
+
         if not self.captions_path.exists():
             raise FileNotFoundError(f"Captions file not found: {self.captions_path}")
 
         caption_mapping: Dict[str, List[str]] = {}
         all_text: List[str] = []
 
+        # Detect delimiter: check if tab-separated
         with open(self.captions_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
+            first_line = f.readline()
+        is_tsv = "\t" in first_line
 
-        header_skipped = False
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
+        with open(self.captions_path, "r", encoding="utf-8") as f:
+            if is_tsv:
+                for line in f:
+                    line = line.strip()
+                    if not line or "\t" not in line:
+                        continue
+                    parts = line.split("\t", 1)
+                    img_file = parts[0].strip().split("#")[0]
+                    raw_caption = parts[1].strip().strip('"')
 
-            if not header_skipped and ("image" in line.lower() and "caption" in line.lower()):
-                header_skipped = True
-                continue
+                    tokens = raw_caption.split()
+                    if len(tokens) < 3 or len(tokens) > (self.seq_length - 2):
+                        continue
 
-            # Support comma-separated (image,caption) or tab-separated (image#0\tcaption)
-            if "," in line:
-                parts = line.split(",", 1)
-            elif "\t" in line:
-                parts = line.split("\t", 1)
+                    full_img_path = str(self.images_dir / img_file)
+                    formatted_caption = self.tokenizer.format_caption(raw_caption)
+
+                    if full_img_path not in caption_mapping:
+                        caption_mapping[full_img_path] = []
+
+                    caption_mapping[full_img_path].append(formatted_caption)
+                    all_text.append(formatted_caption)
             else:
-                continue
+                reader = csv.reader(f)
+                header_skipped = False
+                for row in reader:
+                    if not row or len(row) < 2:
+                        continue
+                    if not header_skipped and ("image" in row[0].lower() and "caption" in row[1].lower()):
+                        header_skipped = True
+                        continue
 
-            img_file = parts[0].strip().split("#")[0]
-            raw_caption = parts[1].strip()
+                    img_file = row[0].strip().split("#")[0]
+                    raw_caption = row[1].strip().strip('"')
 
-            tokens = raw_caption.split()
-            if len(tokens) < 3 or len(tokens) > (self.seq_length - 2):
-                continue
+                    tokens = raw_caption.split()
+                    if len(tokens) < 3 or len(tokens) > (self.seq_length - 2):
+                        continue
 
-            full_img_path = str(self.images_dir / img_file)
-            formatted_caption = self.tokenizer.format_caption(raw_caption)
+                    full_img_path = str(self.images_dir / img_file)
+                    formatted_caption = self.tokenizer.format_caption(raw_caption)
 
-            if full_img_path not in caption_mapping:
-                caption_mapping[full_img_path] = []
+                    if full_img_path not in caption_mapping:
+                        caption_mapping[full_img_path] = []
 
-            caption_mapping[full_img_path].append(formatted_caption)
-            all_text.append(formatted_caption)
+                    caption_mapping[full_img_path].append(formatted_caption)
+                    all_text.append(formatted_caption)
 
         # Ensure only images with at least 1 caption are retained
         clean_mapping = {
