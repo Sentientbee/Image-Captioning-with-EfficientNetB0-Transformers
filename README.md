@@ -68,6 +68,23 @@ When generating each word, the Transformer decoder computes a cross-attention sc
 
 ---
 
+---
+
+## Training Performance & Convergence
+
+Trained on Flickr8k across 25 epochs using Adam with linear warmup learning rate schedule and vectorized multi-caption loss:
+
+| Metric | Value | Details |
+| :--- | :---: | :--- |
+| **Final Training Loss** | **2.2708** | Dropped from initial 8.63 |
+| **Final Training Accuracy** | **48.54%** | Token-level prediction accuracy |
+| **Validation Loss** | **2.9314** | Evaluated on 1,011 unseen Karpathy split images |
+| **Validation Accuracy** | **41.79%** | Robust generalization without severe overfitting |
+| **Step Latency** | **~437 ms** | Per batch (64 images $\times$ 5 captions = 320 captions/step) |
+| **Epoch Time** | **~83 sec** | On a single NVIDIA Tesla T4 GPU |
+
+---
+
 ## Benchmark Results (Flickr8k Karpathy Split)
 
 Evaluated on the standard test split using word-tokenized NLTK corpus metrics:

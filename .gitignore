@@ -42,7 +42,9 @@ ENV/
 *.pt
 *.pth
 *.pkl
-weights/
+weights/*.h5
+weights/*.weights.h5
+!weights/README.md
 outputs/
 logs/
 
