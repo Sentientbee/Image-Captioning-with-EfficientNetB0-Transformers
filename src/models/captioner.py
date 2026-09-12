@@ -4,7 +4,7 @@ from tensorflow import keras
 from tensorflow.keras import layers
 
 from src.models.decoder import TransformerDecoderBlock
-from src.models.encoder import TransformerEncoderBlock
+from src.models.encoder import TransformerEncoderBlock, build_cnn_encoder
 
 
 class ImageCaptioningModel(keras.Model):

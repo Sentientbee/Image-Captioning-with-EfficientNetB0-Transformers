@@ -14,8 +14,10 @@ class WarmupLRSchedule(keras.optimizers.schedules.LearningRateSchedule):
 
     def __init__(self, post_warmup_lr: float, warmup_steps: int):
         super().__init__()
-        self.post_warmup_lr = tf.cast(post_warmup_lr, tf.float32)
-        self.warmup_steps = tf.cast(max(1, warmup_steps), tf.float32)
+        self._post_warmup_lr = float(post_warmup_lr)
+        self._warmup_steps = int(max(1, warmup_steps))
+        self.post_warmup_lr = tf.cast(self._post_warmup_lr, tf.float32)
+        self.warmup_steps = tf.cast(self._warmup_steps, tf.float32)
 
     def __call__(self, step: tf.Tensor) -> tf.Tensor:
         global_step = tf.cast(step, tf.float32)
@@ -29,8 +31,8 @@ class WarmupLRSchedule(keras.optimizers.schedules.LearningRateSchedule):
 
     def get_config(self):
         return {
-            "post_warmup_lr": float(self.post_warmup_lr.numpy()),
-            "warmup_steps": float(self.warmup_steps.numpy()),
+            "post_warmup_lr": self._post_warmup_lr,
+            "warmup_steps": self._warmup_steps,
         }
 
 
