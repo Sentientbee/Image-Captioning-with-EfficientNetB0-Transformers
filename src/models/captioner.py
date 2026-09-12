@@ -33,6 +33,10 @@ class ImageCaptioningModel(keras.Model):
         self.loss_tracker = keras.metrics.Mean(name="loss")
         self.acc_tracker = keras.metrics.Mean(name="acc")
 
+    def build(self, input_shape=None):
+        super().build(input_shape)
+        self.built = True
+
     @property
     def metrics(self):
         return [self.loss_tracker, self.acc_tracker]
@@ -160,4 +164,11 @@ def build_caption_model(
     )
 
     model = ImageCaptioningModel(cnn_model=cnn, encoder=encoder, decoder=decoder)
+
+    # Materialize layers and ensure model.built is True for Keras 3 ModelCheckpoint
+    dummy_img = tf.zeros((1, *image_size, channels))
+    dummy_seq = tf.zeros((1, seq_length - 1), dtype=tf.int32)
+    _ = model((dummy_img, dummy_seq), training=False)
+    model.built = True
+
     return model
