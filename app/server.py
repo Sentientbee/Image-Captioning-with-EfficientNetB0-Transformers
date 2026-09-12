@@ -140,29 +140,29 @@ async def get_samples():
     return [
         {
             "id": "sample1",
-            "name": "Playful Dogs in Grass",
-            "description": "Two dogs running and playing outdoors in green grass",
-            "tag": "Animals",
+            "name": "Little Girl Outdoors",
+            "description": "Young girl in a pink dress sitting on a wooden bench outdoors",
+            "tag": "People",
             "url": "/static/samples/sample1.jpg",
         },
         {
             "id": "sample2",
-            "name": "Children Activity",
-            "description": "Children engaged in active outdoor play",
-            "tag": "People",
+            "name": "Playful Dogs with Stick",
+            "description": "Two dogs playing together outdoors with a stick in mouth",
+            "tag": "Animals",
             "url": "/static/samples/sample2.jpg",
         },
         {
             "id": "sample3",
-            "name": "Sports & Movement",
-            "description": "Action shot capturing athletic activity",
-            "tag": "Sports",
+            "name": "Girl on Playground Swing",
+            "description": "Child playing actively on a swing in a park playground",
+            "tag": "People",
             "url": "/static/samples/sample3.jpg",
         },
         {
             "id": "sample4",
-            "name": "Outdoor Scene",
-            "description": "Scenic landscape with subjects interacting with nature",
+            "name": "Man on Park Bench",
+            "description": "A man seated outside on a park bench in a natural setting",
             "tag": "Nature",
             "url": "/static/samples/sample4.jpg",
         },
@@ -226,19 +226,23 @@ async def generate_caption(
     beam_candidates = []
     if decoding_mode == "beam":
         beam_gen: BeamSearchGenerator = app_state["beam_gen"]
-        beam_gen.temperature = max(0.1, min(temp_val, 2.0))
-        caption, raw_candidates = beam_gen.generate(img_tensor, beam_width=max(1, min(bw_val, 5)))
+        caption, raw_candidates = beam_gen.generate(
+            img_tensor,
+            beam_width=max(1, min(bw_val, 5)),
+            temperature=max(0.1, min(temp_val, 2.0)),
+        )
         beam_candidates = [{"caption": c[0], "score": round(float(c[1]), 3)} for c in raw_candidates]
     else:
         greedy_gen: GreedyGenerator = app_state["greedy_gen"]
         caption = greedy_gen.generate(img_tensor)
         beam_candidates = [{"caption": caption, "score": 1.0}]
 
-    # 4. Cross-Attention Heatmaps Extraction per Word
+    # 4. Extract Synchronized Cross-Attention Heatmaps for the Exact Generated Words
     attn_vis: AttentionVisualizer = app_state["attn_vis"]
-    words, attention_maps, _ = attn_vis.generate_with_attention(img_tensor)
+    caption_words = caption.split() if caption else []
+    words, attention_maps, _ = attn_vis.extract_attention_for_words(img_tensor, caption_words)
 
-    # If greedy/beam gave caption, ensure words align
+    # Fallback uniform attention grid if no words
     if not words and caption:
         words = caption.split()
         grid_dim = int(np.sqrt(100))

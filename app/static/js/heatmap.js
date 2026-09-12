@@ -132,10 +132,12 @@ class HeatmapRenderer {
     // For crisp real-time performance (60 FPS during scrubbing), interpolate onto 160x120 grid
     const heatW = 160;
     const heatH = 120;
-    const heatCanvas = document.createElement('canvas');
-    heatCanvas.width = heatW;
-    heatCanvas.height = heatH;
-    const heatCtx = heatCanvas.getContext('2d');
+    if (this.offscreenCanvas.width !== heatW || this.offscreenCanvas.height !== heatH) {
+      this.offscreenCanvas.width = heatW;
+      this.offscreenCanvas.height = heatH;
+    }
+    const heatCanvas = this.offscreenCanvas;
+    const heatCtx = this.offscreenCtx;
     const imgData = heatCtx.createImageData(heatW, heatH);
     const data = imgData.data;
 
