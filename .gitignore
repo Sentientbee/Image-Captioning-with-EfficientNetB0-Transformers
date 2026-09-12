@@ -67,6 +67,4 @@ data/Flick*
 *.jpeg
 *.png
 
-# Allow sample images for web app demo
-!app/static/samples/*.jpg
-!app/static/samples/*.png
+
