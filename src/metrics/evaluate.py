@@ -1,6 +1,6 @@
 import argparse
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 import numpy as np
 from nltk.translate.bleu_score import SmoothingFunction, corpus_bleu
 from tqdm import tqdm
