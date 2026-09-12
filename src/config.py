@@ -68,6 +68,23 @@ def resolve_weights_path(weights_path: Optional[Union[str, Path]]) -> Optional[P
     return None
 
 
+def resolve_vocab_path(vocab_path: Optional[Union[str, Path]] = "data/vocab.json") -> Optional[Path]:
+    """Finds existing vocab file supporting paths relative to cwd or repo root."""
+    if not vocab_path:
+        return None
+    p = Path(vocab_path)
+    if p.exists():
+        return p
+    repo_root = Path(__file__).resolve().parent.parent
+    candidate = repo_root / vocab_path
+    if candidate.exists():
+        return candidate
+    default_candidate = repo_root / "data" / "vocab.json"
+    if default_candidate.exists():
+        return default_candidate
+    return None
+
+
 @dataclass
 class AppConfig:
     model: ModelConfig = field(default_factory=ModelConfig)

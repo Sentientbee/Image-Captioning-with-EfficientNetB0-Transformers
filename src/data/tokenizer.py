@@ -65,16 +65,22 @@ class CaptionTokenizer:
     @classmethod
     def from_vocab_file(
         cls,
-        vocab_path: Union[str, Path],
+        vocab_path: Union[str, Path] = "data/vocab.json",
         max_tokens: int = 10000,
         seq_length: int = 25,
     ) -> "CaptionTokenizer":
         """Load tokenizer vocabulary from a JSON file."""
-        vocab_path = Path(vocab_path)
-        if not vocab_path.exists():
-            raise FileNotFoundError(f"Vocabulary file not found: {vocab_path}")
+        resolved = Path(vocab_path)
+        if not resolved.exists():
+            repo_root = Path(__file__).resolve().parent.parent.parent
+            if (repo_root / vocab_path).exists():
+                resolved = repo_root / vocab_path
+            elif (repo_root / "data" / "vocab.json").exists():
+                resolved = repo_root / "data" / "vocab.json"
+            else:
+                raise FileNotFoundError(f"Vocabulary file not found: {vocab_path}")
 
-        with open(vocab_path, "r", encoding="utf-8") as f:
+        with open(resolved, "r", encoding="utf-8") as f:
             vocab_list = json.load(f)
 
         return cls(max_tokens=max_tokens, seq_length=seq_length, vocab=vocab_list)
